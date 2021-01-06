@@ -47,7 +47,7 @@ type ConnectMqttData struct {
 	//以上，均是sdk设置，使用者不能初始化
 	//	其中IP PORT ，根据APP_ID自动从配置中计算得出，不需要使用者配置
 	// 	重连没有放开，是因为会出现死循环，因为内部是goto,且没找到任何回调函数可以中断
-
+	Token					string 		//免密登陆的凭证，但有失效时间
 	ClientId 				string		//客户端唯一标识，如果重复，后连接的会踢掉前一个连接，建议由SDK自动生成
 	Protocol 				string		//tcp ws wss ssl
 	LastWishMsg 			LastWishMsg	//遗愿
@@ -168,10 +168,6 @@ func (ckMqtt *CkMqtt) initConfig(){
 }
 //初始化配置中心
 func (ckMqtt *CkMqtt)  initConfigContainer(){
-
-
-
-
 	myTopicList := make(map[string]map[string][]string)
 	for role ,appTopics :=  range ckMqtt.configDataMap.Topic{
 		tmp := make(map[string][]string)
@@ -311,7 +307,6 @@ func (ckMqtt *CkMqtt) NewClient(connectMqttData ConnectMqttData)mqtt.Client{
 		SetUsername(ckMqtt.myConnectMqttData.username).
 		SetPassword(ckMqtt.myConnectMqttData.ps).
 
-
 		SetCleanSession(ckMqtt.myConnectMqttData.CleanSession).
 		SetAutoReconnect(ckMqtt.myConnectMqttData.AutoReconnect).
 
@@ -339,6 +334,12 @@ func (ckMqtt *CkMqtt) NewClient(connectMqttData ConnectMqttData)mqtt.Client{
 			ckMqtt.myConnectMqttData.LastWishMsg.Qos,
 			ckMqtt.myConnectMqttData.LastWishMsg.Retained)
 	}
+	//使用jwt 验证
+	if ckMqtt.myConnectMqttData.Token != "" {
+		ckMqtt.pahoClientOptions.SetPassword(ckMqtt.myConnectMqttData.Token)
+	}
+
+	zlib.MyPrint("username : ",ckMqtt.pahoClientOptions.Username , " psToken : ",ckMqtt.pahoClientOptions.Password)
 
 	//SetDefaultPublishHandler(productReceiveNobodyHand)
 
@@ -380,6 +381,7 @@ func  (ckMqtt *CkMqtt) DefaultPublishMessageHandler(client mqtt.Client, message 
 //这里，主要是把  系统-默认主题，都给订阅上
 func  (ckMqtt *CkMqtt) OnConnectHandler(c mqtt.Client){
 	fmt.Println("OnConnectHandler")
+	os.Exit(-100)
 
 	//1、先处理，配置文件中，默认需要订阅的主题
 	topicsKEY := ""

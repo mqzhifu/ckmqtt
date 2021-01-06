@@ -22,7 +22,8 @@ type DataRecord struct {
 	Id 	int
 	Name string
 	Type int	//1 user 2 service
-	Key string
+	PublicKey string
+	PrivateKey string
 	ServiceName string
 }
 
@@ -32,9 +33,14 @@ func (app *App)GetById(appId int)DataRecord{
 	return Data[appId]
 }
 //通过用户名密码登陆
-func LoginGetTokenByUnamePs(username string ,ps string){
+func (app *App)LoginGetTokenByUnamePs(appId int,username string ,ps string)string{
 	// doing something  auth ok~
+	appInfo := app.GetById(appId)
+	jwtDataPayload := zlib.JwtDataPayload{
 
+	}
+	token := zlib.CreateJwtToken(appInfo.PrivateKey,jwtDataPayload)
+	return token
 }
 
 //通过用户名密码登陆
@@ -84,7 +90,8 @@ func (app *App) loadAppData(){
 		Id:1,
 		Name : "ckmqtt",
 		Type : 1,
-		Key : "123456",
+		PublicKey : "zemqt76",
+		PrivateKey: "zemqt76",
 	}
 	Data[1] = dataRecord
 
@@ -92,8 +99,9 @@ func (app *App) loadAppData(){
 		Id:2,
 		Name : "ckmqtt",
 		Type : 2,
-		Key : "123456",
-		ServiceName:"ucenter",
+		PublicKey : "123456",
+		PrivateKey: "zemqt76",
+		ServiceName:"zemqt76",
 	}
 	Data[2] = dataRecord
 }
