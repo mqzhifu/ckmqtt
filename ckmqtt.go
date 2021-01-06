@@ -1,22 +1,16 @@
-package main
+package ckmqtt
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/eclipse/paho.mqtt.golang"
-	"github.com/mqzhifu/configcenter"
 	"log"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+	"src/zlib"
 )
-
-//配置中心读取的目录 ，这里也可以使用http 方式，省略此配置项
-var rooPath = "/data/www/golang/src/configCenter/"
-//配置中心 类
-var configer * configcenter.Configer
 
 const (
 	//连接协议
@@ -132,7 +126,7 @@ type SystemSubscribeCallback 	func(*CkMqtt, mqtt.Message)
 //=======================以上所有初始化信息结束，下面是执行方法了================================
 
 //实例化-类，构造函数
-func NewCkMqtt(appId int) *CkMqtt{
+func NewCkMqtt(appInfo DataRecord,configData ConfigData) *CkMqtt{
 	ckMqtt := new (CkMqtt)
 
 	mqtt.ERROR = log.New(os.Stdout, "[ERROR] ", 0)
@@ -140,11 +134,12 @@ func NewCkMqtt(appId int) *CkMqtt{
 	mqtt.WARN = log.New(os.Stdout, "[WARN]  ", 0)
 	mqtt.DEBUG = log.New(os.Stdout, "[DEBUG] ", 0)
 
-
+	ckMqtt.configDataMap = configData
 	ckMqtt.msgPaylodMaxSize = 2	//消息体最大2MB
 
-	app := NewApp()
-	ckMqtt.appInfo = app.GetById(appId)
+	//app := NewApp()
+	//ckMqtt.appInfo = app.GetById(appId)
+	ckMqtt.appInfo = appInfo
 	ckMqtt.initConfigContainer()
 	return ckMqtt
 }
@@ -173,25 +168,8 @@ func (ckMqtt *CkMqtt) initConfig(){
 }
 //初始化配置中心
 func (ckMqtt *CkMqtt)  initConfigContainer(){
-	fileTotalSizeMax := 100
-	fileSizeMax := 2
-	fileCntMax :=100
-	allowExtType := "ini"
-	configer = configcenter.NewConfiger(fileTotalSizeMax,fileSizeMax,fileCntMax,allowExtType)
-	//让配置器，读取目录下的，所有配置文件，加载到内存
-	configer.StartLoading(rooPath)
-	//根据appId 取到该app-name
-	//appRecord := app.GetById(appId)
-	//配置中心的分层维度是以项目名为一个文件夹子~一个项目有N多配置文件
-	//读取出该项目下的所有配置文件
-	appConfigData ,err := configer.Search(ckMqtt.appInfo.Name)
-	if err != nil{
-		fmt.Print(err.Error())
-		os.Exit(-100)
-	}
-	//配置中心读取出来的内容是JSON ，再转一下，存到本地内存中
-	ckMqtt.configDataMap = ConfigData{}
-	json.Unmarshal( []byte(appConfigData) , &ckMqtt.configDataMap  )
+
+
 
 
 	myTopicList := make(map[string]map[string][]string)
@@ -253,7 +231,7 @@ func(ckMqtt *CkMqtt) getKeyByAppType(appType int)string{
 //生成一个随机-clientId 尽量短小，因为消息体内包含clientId ,用来给 消费者 回传信息
 func (ckMqtt *CkMqtt) GenerateRandClientId( )string {
 	dataRecord := ckMqtt.appInfo
-	clientId := ckMqtt.configDataMap.Topic_base["client_id_prefix"][ckMqtt.getKeyByAppType(dataRecord.Type)]+strconv.Itoa(dataRecord.Id) +"_"+ strconv.Itoa(getRandIntNum(100))
+	clientId := ckMqtt.configDataMap.Topic_base["client_id_prefix"][ckMqtt.getKeyByAppType(dataRecord.Type)]+strconv.Itoa(dataRecord.Id) +"_"+ strconv.Itoa(zlib.GetRandIntNum(100))
 
 	return clientId
 }
@@ -368,7 +346,7 @@ func (ckMqtt *CkMqtt) NewClient(connectMqttData ConnectMqttData)mqtt.Client{
 	return ckMqtt.pahoClientInstance
 }
 
-func  (ckMqtt *CkMqtt) connect() mqtt.Token{
+func  (ckMqtt *CkMqtt) Connect() mqtt.Token{
 	return ckMqtt.pahoClientInstance.Connect()
 }
 
@@ -507,7 +485,7 @@ func (ckMqtt *CkMqtt) Publish(topic string, qos byte, retained bool, payload str
 //另外，如果某些业务场景，需要同一ID永久分配固定IP（服务器没挂掉），还得换算法
 func getIpByLBRand(ipList map[string]map[string]string)string{
 	totalLen := len(ipList)
-	randNum := getRandIntNum(totalLen )
+	randNum := zlib.GetRandIntNum(totalLen )
 	//fmt.Println("totalLen",totalLen,"randNum",randNum)
 	inc := 0
 	for key,_ := range ipList {
